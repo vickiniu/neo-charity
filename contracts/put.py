@@ -1,4 +1,3 @@
-from neo.Wallets.Wallet import wallet
 
 from boa.blockchain.vm.Neo.Runtime import Notify, GetTrigger, CheckWitness
 from boa.blockchain.vm.Neo.Action import RegisterAction
@@ -13,29 +12,53 @@ from boa.blockchain.vm.Neo.Output import GetScriptHash, GetValue, GetAssetId
 from boa.blockchain.vm.Neo.Storage import GetContext, Get, Put, Delete
 from boa.code.builtins import concat, range
 
-def Main(operation, src, dest, tag, amount):
-    Stage(operation, src, dest, tag, amount)
-    return Test(operation, src, dest, tag, amount)
+GAS_ASSET_ID = b'\xe7-(iy\xeel\xb1\xb7\xe6]\xfd\xdf\xb2\xe3\x84\x10\x0b\x8d\x14\x8ewX\xdeB\xe4\x16\x8bqy,`'
+OnSpend = RegisterAction('onSpend', 'to', 'amount', 'scripthash')
 
-def Test(operation, src, dest, tag, amount):
-    context = GetContext()
-    dest_tag = concat(dest, tag)
-    amount = Get(context, dest_tag)
-    return amount
+def Main(operation, dest, tag, amount):
+    Stage(operation, dest, tag, amount)
+    return Test(operation, dest, tag, amount)
 
-def Stage(operation, src, dest, tag, amount):
+def Test(operation, dest, tag, amount):
+    return "fuck yeah"
+
+def Stage(operation, dest, tag, amount):
     context = GetContext()
+    src = getSource()
     dest_tag = concat(dest, tag)
     dest_tag_users = concat(dest_tag, "-users")
     dest_tag_src = concat(dest_tag, src)
     if operation == 'donate':
-        donate(context, dest_tag, dest_tag_users, dest_tag_src, src, amount)
-        spend(context, 300, dest, "alaska", "blah")
+        donation = getValue()
+        donate(context, dest_tag, dest_tag_users, dest_tag_src, src, donation)
         return "WOW I LOVE TO HACK THIS IS SO THRILLING"
     if operation == 'spend':
         spend(context, amount, src, dest, tag)
         return "Not yet functional"
     return "Invalid operation"
+
+
+def getSource():
+    tx = GetScriptContainer()
+    references = tx.References
+    reference = references[0]
+    sender = GetScriptHash(reference)
+    return sender
+
+def getValue():
+    tx = GetScriptContainer()
+    references = tx.References
+    reference = references[0]
+    output_asset_id = GetAssetId(reference)
+    if output_asset_id == GAS_ASSET_ID:
+        for output in tx.Outputs:
+            shash = GetScriptHash(output)
+            value = GetValue(output) / 100000000
+            remainder = value % 1
+            value = value - remainder
+            return value
+    print("gas not found rip")
+    return 0
 
 #TODO: store maps of orgs : tags
 def spend(context, amount, src, dest, tag):
@@ -49,6 +72,8 @@ def spend(context, amount, src, dest, tag):
     Delete(context, org_tag)
     new_total = total - amount
     Put(context, org_tag, new_total)
+    receiver = GetExecutingScriptHash()
+    OnSpend(dest, amount, receiver)
     return True
 
 
