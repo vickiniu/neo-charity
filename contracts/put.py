@@ -12,13 +12,14 @@ from boa.blockchain.vm.Neo.Storage import GetContext, Get, Put, Delete
 from boa.code.builtins import concat, range
 
 def Main(operation, src, dest, tag, amount):
-    Stage(operation, src, dest, tag, amount)
-    context = GetContext()
-    dest_tag = concat(dest, tag)
-    dest_tag_users = concat(dest_tag, "-users")
-    dest_tag_src = concat(dest_tag, src)
-    Stage('donate', 'alice', 'redcross', 'hurricane_maria', 600)
-    return getTotal(dest_tag)
+    return Stage(operation, src, dest, tag, amount)
+    # context = GetContext()
+    # dest_tag = concat(dest, tag)
+    # dest_tag_users = concat(dest_tag, "-users")
+    # dest_tag_src = concat(dest_tag, src)
+    # return getTotal(context, dest_tag)
+    # return getExpense(context,'redcross','salary','gm')
+    # return getSpenders(context,'redcross','salary')
 
 def Stage(operation, src, dest, tag, amount):
     context = GetContext()
@@ -36,8 +37,11 @@ def Stage(operation, src, dest, tag, amount):
     if operation == 'getDonation':
         return getDonation(context, dest_tag_src)
     if operation == 'spend':
-        spend(context, amount, src, dest, tag)
-        return "Not yet functional"
+        return spend(context, amount,src,dest,tag)
+    if operation == 'getExpense':
+        return getExpense(context,src,tag,dest)
+    if operation == 'getSpenders':
+        return getSpenders(context,src,tag,dest)
     return "Invalid operation"
 
 #TODO: store maps of orgs : tags
@@ -52,7 +56,26 @@ def spend(context, amount, src, dest, tag):
     Delete(context, org_tag)
     new_total = total - amount
     Put(context, org_tag, new_total)
+    
+    org_tag_users = concat(org_tag, "-users")
+    org_tag_users = concat(org_tag_users, "-exp")
+    org_tag_dest = concat(org_tag, dest)
+    org_tag_dest = concat(org_tag_dest, "-exp")
+    Put(context, org_tag_users, dest)
+    Put(context, org_tag_dest, amount)
     return True
+
+def getExpense(context,src,tag,dest):
+    org_tag = concat(src, tag)
+    org_tag_dest = concat(org_tag, dest)
+    org_tag_dest = concat(org_tag_dest, "-exp")
+    return Get(context, org_tag_dest)
+
+def getSpenders(context,src,tag):
+    org_tag = concat(src, tag)
+    org_tag_users = concat(org_tag, "-users")
+    org_tag_users = concat(org_tag_users, "-exp")
+    return Get(context, org_tag_users)
 
 # :return: int, total amount donated to org + tag
 def getTotal(context, dest_tag):
@@ -69,27 +92,27 @@ def getDonation(context, dest_tag_src):
 def donate(context, dest_tag, dest_tag_users, dest_tag_src, src, amount):
     total = Get(context, dest_tag)
     # This destination + tag already have donations
-    if total:
-        new_total = total + amount
-        Put(context, dest_tag, new_total)
-        donors = Get(context, dest_tag_users)
-        # Donor has already donated previously
-        if contains(donors, src):
-            amount_donated = Get(context, dest_tag_src)
-            amount_donated = amount_donated + amount
-            Put(context, dest_tag_src, amount_donated)
-        # New donor, need to add to list
-        else:
-            donors = concat(donors, ",")
-            donors = concat(donors, src)
-            Delete(context, dest_tag_users)
-            Put(context, dest_tag_users, donors)
-            Put(context, dest_tag_src, amount)
-    # First donation to this destination + tag
-    else:
-        Put(context, dest_tag, amount)
-        Put(context, dest_tag_users, src)
-        Put(context, dest_tag_src, amount)
+    # if total:
+    #     new_total = total + amount
+    #     Put(context, dest_tag, new_total)
+    #     donors = Get(context, dest_tag_users)
+    #     # Donor has already donated previously
+    #     if contains(donors, src):
+    #         amount_donated = Get(context, dest_tag_src)
+    #         amount_donated = amount_donated + amount
+    #         # Put(context, dest_tag_src, amount_donated)
+    #     # New donor, need to add to list
+    #     else:
+    #         donors = concat(donors, ",")
+    #         donors = concat(donors, src)
+    #         Delete(context, dest_tag_users)
+    #         Put(context, dest_tag_users, donors)
+    #         Put(context, dest_tag_src, amount)
+    # # First donation to this destination + tag
+    # else:
+    Put(context, dest_tag, amount)
+    Put(context, dest_tag_users, src)
+    Put(context, dest_tag_src, amount)
 
 
 def contains(string, substr):
